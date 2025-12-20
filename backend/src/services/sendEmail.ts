@@ -2,31 +2,31 @@ import Mailjet from "node-mailjet";
 import { MJ_SECRET_KEY, MJ_API_KEY } from "../config/env";
 
 if (!MJ_API_KEY || !MJ_SECRET_KEY) {
-    console.log("Define the api keys in the env file");
+  throw new Error("Define the Mailjet api keys in the env file");
 }
 
 const mailjet = Mailjet.apiConnect(
-    MJ_API_KEY ?? "", MJ_SECRET_KEY ?? ""
+  MJ_API_KEY ?? "", MJ_SECRET_KEY ?? ""
 );
 
 const sendEmail = async (name: string, email: string, otp: number) => {
-    try {
-        const request = mailjet.post('send', { version: 'v3.1' }).request({
-            Messages: [
-                {
-                    From: {
-                        Email: "salmanansarw2@gmail.com",
-                        Name: "Next Docs"
-                    },
-                    To: [
-                        {
-                            Email: email,
-                            Name: name
-                        }
-                    ],
-                    Subject: "Verify your email address",
-                    TextPart: "Use the code below to complete your sign-up",
-                    HTMLPart: `
+  try {
+    const request = mailjet.post('send', { version: 'v3.1' }).request({
+      Messages: [
+        {
+          From: {
+            Email: "salmanansarw2@gmail.com",
+            Name: "Next Docs"
+          },
+          To: [
+            {
+              Email: email,
+              Name: name
+            }
+          ],
+          Subject: "Verify your email address",
+          TextPart: "Use the code below to complete your sign-up",
+          HTMLPart: `
   <div style="font-family: Arial, Helvetica, sans-serif; background-color: #f4f6f8; padding: 20px;">
     <div style="max-width: 500px; margin: auto; background-color: #ffffff; padding: 24px; border-radius: 8px;">
       
@@ -63,17 +63,17 @@ const sendEmail = async (name: string, email: string, otp: number) => {
   </div>
 `
 
-                }
-            ]
-        })
-        await request;
-        console.log("Email sent successfully");
-        return true;
+        }
+      ]
+    })
+    await request;
+    console.log("Email sent successfully");
+    return true;
 
-    } catch (error) {
-        console.error("Error sending email:", error);
-        return false;
-    }
+  } catch (error) {
+    console.error("Error sending email:", error);
+    return false;
+  }
 }
 
 export default sendEmail

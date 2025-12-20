@@ -4,6 +4,12 @@ import User from "../models/user.modal";
 import bcrypt from "bcryptjs";
 import { generateOtp } from "../utils/generateOtp";
 import sendEmail from "../services/sendEmail";
+import { signToken } from "../utils/jwtTokens";
+import { JWT_SECRET } from "../config/env";
+import jwt, { JwtPayload } from "jsonwebtoken"
+
+
+
 
 export const signUp = async (req: Request, res: Response, next: NextFunction) => {
   const session = await mongoose.startSession();
@@ -111,4 +117,90 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
   }
 }
 
+export const signIn = async (req: Request, res: Response, next: NextFunction) => {
+  const session = await mongoose.startSession()
+  session.startTransaction()
+  try {
 
+    const { email, password } = req.body
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required"
+      })
+    }
+
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "User not found!"
+      })
+    }
+
+    const match = await bcrypt.compare(password, user.password)
+    if (!match) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password"
+      })
+    }
+
+    const accessToken = signToken({ id: user._id }, "15m")
+    const refreshToken = signToken({ id: user._id }, "7d")
+
+    user.refreshToken = refreshToken
+    await user.save()
+
+    await session.commitTransaction()
+    await session.endSession()
+
+    res.cookie("access_token", accessToken, { httpOnly: true, maxAge: 15 * 60 * 1000 })
+    res.cookie("refresh_token", refreshToken, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 })
+
+    res.status(200).json({ message: "Signed in succcessfully" })
+
+
+
+  } catch (error) {
+    await session.abortTransaction()
+    await session.endSession()
+    next(error)
+  }
+}
+
+// export const refreshToken = async (req: Request, res: Response, next: NextFunction) => {
+//   const session = await mongoose.startSession()
+//   session.startTransaction()
+//   try {
+//     const refreshToken = req.cookies.refresh_token
+
+//     if (!refreshToken) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "No refresh token found"
+//       })
+//     }
+//     if (!JWT_SECRET) {
+//       throw new Error("JWT_SECRET is not defined")
+//     }
+//     const decoded = jwt.verify(refreshToken, JWT_SECRET) as JwtPayload
+
+//     const user = await User.findById(decoded.id)
+//     if (!user || refreshToken !== user.refreshToken) {
+//       return res.status(403).json({
+//         success: false,
+//         message: "Invalid refresh token"
+//       })
+//     }
+
+
+//     await session.commitTransaction()
+//     await session.endSession()
+
+//   } catch (error) {
+//     await session.abortTransaction()
+//     await session.endSession()
+//   }
+// }
