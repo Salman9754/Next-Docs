@@ -3,7 +3,6 @@ import { DB_URI } from "../config/env";
 
 if (!DB_URI) {
     console.log("Please define the mongoDb URI in env file");
-
 }
 
 const connectionToDB = async () => {
