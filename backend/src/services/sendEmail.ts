@@ -33,7 +33,7 @@ const sendEmail = async (name: string, email: string, otp: number) => {
       <h2 style="color: #333; margin-bottom: 12px;">Verify Your Email</h2>
       
       <p style="color: #555; font-size: 14px;">
-        Thanks for signing up! Please use the OTP below to verify your account.
+       HI ${name}! Thanks for signing up! Please use the OTP below to verify your account.
       </p>
 
       <div style="margin: 20px 0; text-align: center;">
