@@ -1,7 +1,7 @@
 import Mailjet from "node-mailjet";
-import { MJ_SECRET_KEY, MJ_API_KEY } from "../config/env";
+import { MJ_SECRET_KEY, MJ_API_KEY, MJ_EMAIL_ADD } from "../config/env";
 
-if (!MJ_API_KEY || !MJ_SECRET_KEY) {
+if (!MJ_API_KEY || !MJ_SECRET_KEY || !MJ_EMAIL_ADD) {
   throw new Error("Define the Mailjet api keys in the env file");
 }
 
@@ -15,7 +15,7 @@ const sendEmail = async (name: string, email: string, otp: number) => {
       Messages: [
         {
           From: {
-            Email: "salmanansarw2@gmail.com",
+            Email: MJ_EMAIL_ADD,
             Name: "Next Docs"
           },
           To: [

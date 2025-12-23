@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import mongoose from "mongoose";
-import User from "../models/user.modal";
+import User from "../models/user.model";
 import bcrypt from "bcryptjs";
 import { generateOtp } from "../utils/generateOtp";
 import sendEmail from "../services/sendEmail";
@@ -9,11 +8,10 @@ import { JWT_SECRET } from "../config/env";
 import jwt, { JwtPayload } from "jsonwebtoken"
 
 
-
-
 export const signUp = async (req: Request, res: Response, next: NextFunction) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  // Removed the testing atmoic operations in auth controllers no need! 
+  // const session = await mongoose.startSession()
+  // session.startTransaction()
   try {
     const { name, email, password } = req.body;
 
@@ -24,7 +22,7 @@ export const signUp = async (req: Request, res: Response, next: NextFunction) =>
       });
     }
 
-    const existingUser = await User.findOne({ email }).session(session);
+    const existingUser = await User.findOne({ email })
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -37,17 +35,14 @@ export const signUp = async (req: Request, res: Response, next: NextFunction) =>
     const hashedPass = await bcrypt.hash(password, salt);
     const otp = generateOtp()
 
-    const [user] = await User.create([{
+    const user = await User.create({
       name,
       email,
       password: hashedPass,
       refreshToken: null,
       otpCode: otp,
       isVerified: false
-    }], { session });
-
-    await session.commitTransaction();
-    await session.endSession();
+    });
 
     try {
       sendEmail(name, email, otp);
@@ -60,15 +55,12 @@ export const signUp = async (req: Request, res: Response, next: NextFunction) =>
       user_id: user._id,
     });
   } catch (error) {
-    await session.abortTransaction();
-    await session.endSession();
     next(error);
   }
 };
 
 export const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
-  const session = await mongoose.startSession()
-  session.startTransaction()
+
   try {
 
     const { email, otp } = req.body
@@ -80,7 +72,7 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
       })
     }
 
-    const user = await User.findOne({ email }).session(session)
+    const user = await User.findOne({ email })
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -103,10 +95,7 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
 
     user.otpCode = null
     user.isVerified = true
-    await user.save({ session })
-
-    await session.commitTransaction()
-    await session.endSession()
+    await user.save()
 
     res.status(200).json({
       success: true,
@@ -115,16 +104,12 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
 
 
   } catch (error) {
-    await session.abortTransaction()
-    await session.endSession()
     next(error)
   }
 }
 
 export const resendOtp = async (req: Request, res: Response, next: NextFunction) => {
 
-  const session = await mongoose.startSession()
-  session.startTransaction()
   try {
 
     const { email } = req.body
@@ -136,7 +121,7 @@ export const resendOtp = async (req: Request, res: Response, next: NextFunction)
       })
     }
 
-    const user = await User.findOne({ email }).session(session)
+    const user = await User.findOne({ email })
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -153,10 +138,7 @@ export const resendOtp = async (req: Request, res: Response, next: NextFunction)
 
     const newOtp = generateOtp()
     user.otpCode = newOtp
-    await user.save({ session })
-
-    await session.commitTransaction()
-    await session.endSession()
+    await user.save()
 
     try {
       sendEmail(user.name, email, newOtp)
@@ -165,16 +147,13 @@ export const resendOtp = async (req: Request, res: Response, next: NextFunction)
     }
 
   } catch (error) {
-    await session.abortTransaction()
-    await session.endSession()
     next(error)
   }
 
 }
 
 export const signIn = async (req: Request, res: Response, next: NextFunction) => {
-  const session = await mongoose.startSession()
-  session.startTransaction()
+
   try {
 
     const { email, password } = req.body
@@ -186,7 +165,7 @@ export const signIn = async (req: Request, res: Response, next: NextFunction) =>
       })
     }
 
-    const user = await User.findOne({ email }).session(session)
+    const user = await User.findOne({ email })
     if (!user) {
       return res.status(400).json({
         success: false,
@@ -213,28 +192,19 @@ export const signIn = async (req: Request, res: Response, next: NextFunction) =>
     const refreshToken = signToken({ id: user._id }, "7d")
 
     user.refreshToken = refreshToken
-    await user.save({ session })
-
-    await session.commitTransaction()
-    await session.endSession()
+    await user.save()
 
     res.cookie("access_token", accessToken, { httpOnly: true, maxAge: 15 * 60 * 1000 })
     res.cookie("refresh_token", refreshToken, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 })
-
     res.status(200).json({ message: "Signed in succcessfully" })
 
-
-
   } catch (error) {
-    await session.abortTransaction()
-    await session.endSession()
     next(error)
   }
 }
 
 export const refreshToken = async (req: Request, res: Response, next: NextFunction) => {
-  const session = await mongoose.startSession()
-  session.startTransaction()
+
   try {
     const refreshToken = req.cookies.refresh_token
 
@@ -249,7 +219,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     }
     const decoded = jwt.verify(refreshToken, JWT_SECRET) as JwtPayload
 
-    const user = await User.findById(decoded.id).session(session)
+    const user = await User.findById(decoded.id)
     if (!user || refreshToken !== user.refreshToken) {
       return res.status(403).json({
         success: false,
@@ -261,49 +231,36 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     const newRefresh = signToken({ id: user._id }, "7d")
 
     user.refreshToken = newRefresh
-    await user.save({ session })
+    await user.save()
 
-    await session.commitTransaction()
-    await session.endSession()
 
     res.cookie("access_token", newAccess, { httpOnly: true, maxAge: 15 * 60 * 1000 })
     res.cookie("refresh_token", newRefresh, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 })
-
     res.status(200).json({ message: "Tokens refreshed successfully" })
 
   } catch (error) {
-    await session.abortTransaction()
-    await session.endSession()
     next(error)
   }
 }
 
 export const signOut = async (req: Request, res: Response, next: NextFunction) => {
 
-  const session = await mongoose.startSession()
-  session.startTransaction()
   try {
     const refreshToken = req.cookies.refresh_token
 
     if (refreshToken) {
-      const user = await User.findOne({ refreshToken }).session(session)
+      const user = await User.findOne({ refreshToken })
       if (user) {
         user.refreshToken = null
-        await user.save({ session })
+        await user.save()
       }
     }
 
-    await session.commitTransaction()
-    session.endSession()
-
     res.clearCookie("access_token", { httpOnly: true })
     res.clearCookie("refresh_token", { httpOnly: true })
-
     res.status(200).json({ message: "User signed out successfully" })
 
   } catch (error) {
-    await session.abortTransaction()
-    await session.endSession()
     next(error)
   }
 

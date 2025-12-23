@@ -4,6 +4,7 @@ import authRouter from "./routes/authRoutes";
 import cors from "cors";
 import errorMiddleware from "./middlewares/errorMiddleware";
 import cookieParser from 'cookie-parser'
+import { authMiddleware } from "./middlewares/authMiddleware";
 
 
 const app = express();
@@ -14,7 +15,7 @@ app.use(express.urlencoded({ extended: false }))
 app.use(cookieParser())
 
 
-app.get("/test", (req: Request, res: Response) => {
+app.get("/test", authMiddleware, (req: Request, res: Response) => {
   res.send("App working");
 });
 app.use("/auth", authRouter);

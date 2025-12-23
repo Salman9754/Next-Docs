@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from "express"
 
 // Global MongoDb error middleware
 
-const errorMiddleware = async (err: any, req: Request, res: Response, next: NextFunction) => {
+const errorMiddleware = (err: any, req: Request, res: Response, next: NextFunction) => {
     try {
         let error = { ...err }
         error.message = err.message
